@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     if ( argc != 2 ) {
         // We print argv[0] assuming it is the program name
         std::cout << "usage: " << argv[0] << " <efficiency.root>" << std::endl;
+        return 0;
     }
     
     TString fileName = argv[1];
@@ -23,7 +24,7 @@ int main(int argc, char *argv[]) {
     
     if (!File) {
         std::cout << "##### ERROR: could not open " << fileName << std::endl;
-        return 1;
+        return 0;
     }
 
     // get information on run
@@ -78,6 +79,7 @@ int main(int argc, char *argv[]) {
                 TTree* dataTree = (TTree*) File->Get(tree_name);
                 // get efficiency
                 efficiency = GetEfficiency(dataTree);
+                std::cout << "efficiency: " << efficiency << std::endl;
             }
             
             // fill histogram
@@ -104,6 +106,12 @@ int main(int argc, char *argv[]) {
 
 double GetEfficiency(TTree* dataTree) {
     
+    
+    
+    // minimum distance between S1s is about 0.5us according to https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon100:analysis:mayra:run14:rn220:bipo
+    
+    // minimum distance between S2s is 3 mm/(1.73 m/s)=1.73us
+    
     // set alias
     //
     // WIMP position at scattering
@@ -117,27 +125,48 @@ double GetEfficiency(TTree* dataTree) {
     dataTree->SetAlias("y1","x_WIMP1.Y()");
     dataTree->SetAlias("z1","x_WIMP1.Z()");
     dataTree->SetAlias("r1","sqrt(x_WIMP1.X()**2+x_WIMP1.Y()**2)");
+    
+    // time of S1s and S2s
+    dataTree->SetAlias("S1_2","tau");
+    dataTree->SetAlias("S2_1","(0.153-z0)/1.73e3");
+    dataTree->SetAlias("S2_2","tau+(0.153-z1)/1.73e3");
+
+    
+    // ---------------------------------------------------
+    // cuts
+    // ---------------------------------------------------
 
     // nuclear recoil in 34kg
-    dataTree->SetAlias("X34kg","(TMath::Power(TMath::Abs(-z0+0.001)/0.1268,2.7)+TMath::Power((r0*r0)/0.0175,2.7)<1)"); // X34kg2
+    dataTree->SetAlias("XNR34kg","(TMath::Power(TMath::Abs(-z0+0.001)/0.1268,2.7)+TMath::Power((r0*r0)/0.0175,2.7)<1)"); // X34kg2
+    
+    // de-excitation in 34kg
+    dataTree->SetAlias("XG34kg","(TMath::Power(TMath::Abs(-z0+0.001)/0.1268,2.7)+TMath::Power((r0*r0)/0.0175,2.7)<1)"); // X34kg2
+    
+    // NR in 48kg
+    dataTree->SetAlias("XNR48kg","((pow(TMath::Abs((z0+0.003)/0.146),4)+pow(TMath::Abs(r0*r0/0.02),4))<1)"); // X48kg0
     
     // de-excitation in 48kg
-    dataTree->SetAlias("X48kg","((pow(TMath::Abs((z1+0.003)/0.146),4)+pow(TMath::Abs(r1*r1/0.02),4))<1)"); // X48kg0
-
-    // WIMP position at scattering
-    TH2D* hPos_start = new TH2D("hPos_start","WIMP Position at Scattering;R^{2} (m^{2});Z (m)",50.,0.,0.155*0.155,50,-0.155,0.155);
-    dataTree->Draw("z0:r0^2>>hPos_start","X34kg","goff");
+    dataTree->SetAlias("XG48kg","((pow(TMath::Abs((z1+0.003)/0.146),4)+pow(TMath::Abs(r1*r1/0.02),4))<1)"); // X48kg0
     
-    // WIMP position at de-excitation
-    TH2D* hPos_end = new TH2D("hPos_end","WIMP Position at De-excitation;R^{2} (m^{2});Z (m)",50.,0.,0.155*0.155,50,-0.155,0.155);
-    dataTree->Draw("z1:r1^2>>hPos_end","X34kg&&X48kg","goff");
+    // second S1 before both S2s
+    dataTree->SetAlias("XS1S2S2","(S1_2<S2_1) && (S1_2<S2_2)");
 
+    // difference between S1s >=0.5us
+    dataTree->SetAlias("XdtS1","S1_2>=0.5e-6");
+    
+    // difference between S2s >=1.73us
+    dataTree->SetAlias("XdtS2","TMath::Abs(S2_2-S2_1)>=1.73e-6");
+
+
+    
+    // events with NR in 48kg fiducial volume
+    double N_all = dataTree->Draw("","XNR48kg","goff");
+    
+    // events passing all cuts
+    double N_cuts = dataTree->Draw("","XNR48kg && XG48kg && XS1S2S2 && XdtS1 && XdtS2","goff");
     
     // detection efficiency
-    double efficiency = (hPos_end->GetEntries())/(hPos_start->GetEntries());
-    
-    delete hPos_start;
-    delete hPos_end;
+    double efficiency = N_cuts/N_all;
     
     return efficiency;
 
