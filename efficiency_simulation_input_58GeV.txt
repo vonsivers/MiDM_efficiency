@@ -3,14 +3,14 @@
 # WIMP mass (eV)
 58.e9
 # mass splitting lower limit (eV)
-50e3;
+1e3;
 # mass splitting upper limit (eV)
-150.e3;
+140.e3;
 # mass splitting steps
 10
 # WIMP dipole moment lower limit (mu_N)
-0.1e-3;
+6.2e-4;
 # WIMP dipole moment upper limit (mu_N)
-10.e-3;
+4.3e-3;
 # WIMP dipole moment steps
 10

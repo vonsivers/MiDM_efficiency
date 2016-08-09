@@ -29,7 +29,7 @@ TVector3 GetV_scatt(TVector3 Vin, double E_R);
 TVector3 RotateEarth(TVector3 v, double hour);
 TVector3 SimpleRotation(TVector3 v, double phi, double theta);
 double GetLifetime();
-int ReadParameters();
+int ReadParameters(TString FileName);
 int InitParameters(int j, int k);
 
 // global variables
@@ -88,13 +88,25 @@ TF3* FormFactor2 = new TF3("FormFactor2","(3.*exp(-[0]*z/2.)*(sin([1]*sqrt(z))-[
 
 // ---------------------------------------------------------
 // main program
-int main() {
+int main(int argc, char *argv[]) {
+    
+    // argc should be =2 for correct execution
+    if ( argc != 2 ) {
+        
+        // We print argv[0] assuming it is the program name
+        std::cout<<"usage: "<< argv[0] <<" <efficiency_simulation_input.txt>" << std::endl;
+        
+        return 1;
+    }
+    
+    TString FileName = argv[1];
+
     
     clock_t t1,t2;
     t1=clock();
     
     // read parameters from input file
-    if (ReadParameters()) {
+    if (ReadParameters(FileName)) {
         cout << "######## ERROR: Could not read input parameters" << endl;
         return 1;
     }
@@ -463,15 +475,13 @@ double GetLifetime() {
 
 // ---------------------------------------------------------
 // read input parameters from file
-int ReadParameters() {
-    
-    TString FileName = "efficiency_simulation_input.txt";
+int ReadParameters(TString FileName) {
     
     ifstream File;
     File.open(FileName);
     
     if(!File.is_open()) {
-        cout << "ERROR: Could not open 'efficiency_simulation_input.txt'" << endl;
+        cout << "ERROR: Could not open " << FileName << endl;
         return 0;
     }
     
