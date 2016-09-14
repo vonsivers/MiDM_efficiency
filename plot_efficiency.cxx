@@ -107,11 +107,6 @@ int main(int argc, char *argv[]) {
 double GetEfficiency(TTree* dataTree) {
     
     
-    
-    // minimum distance between S1s is about 0.5us according to https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon100:analysis:mayra:run14:rn220:bipo
-    
-    // minimum distance between S2s is 3 mm/(1.73 m/s)=1.73us
-    
     // set alias
     //
     // WIMP position at scattering
@@ -151,11 +146,11 @@ double GetEfficiency(TTree* dataTree) {
     // second S1 before both S2s
     dataTree->SetAlias("XS1S2S2","(S1_2<S2_1) && (S1_2<S2_2)");
 
-    // difference between S1s >=0.5us
-    dataTree->SetAlias("XdtS1","S1_2>=0.5e-6");
+    // difference between S1s >=50ns
+    dataTree->SetAlias("XdtS1","S1_2>=50.e-9");
     
-    // difference between S2s >=1.73us
-    dataTree->SetAlias("XdtS2","TMath::Abs(S2_2-S2_1)>=1.73e-6");
+    // difference between S2s >=3.5us
+    dataTree->SetAlias("XdtS2","TMath::Abs(S2_2-S2_1)>=3.5e-6");
 
 
     
