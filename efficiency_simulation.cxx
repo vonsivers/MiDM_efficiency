@@ -7,9 +7,10 @@
 #include <TRandom3.h>
 #include <TF1.h>
 #include <TF3.h>
+#include <TH2D.h>
 #include <TFile.h>
-#include <TUnuran.h>
-#include <TUnuranMultiContDist.h>
+//#include <TUnuran.h>
+//#include <TUnuranMultiContDist.h>
 #include <TRotation.h>
 
 #include <fstream>
@@ -122,18 +123,17 @@ int main(int argc, char *argv[]) {
     results_name = TString::Format("%1.f_%1.f-%1.f_%1.1f-%1.1f",m_WIMP, delta_low,delta_high, mu_WIMP_low,mu_WIMP_high);
     TFile* file = new TFile("efficiency_"+results_name+".root","RECREATE");
     
-    TTree* RunTree = new TTree("RunTree","RunTree");
+    // calculate histogram bins
+    double bin_delta_low = delta_low-(delta_high-delta_low)/(fNSteps_delta-1)/2.;
+    double bin_delta_high = delta_high+(delta_high-delta_low)/(fNSteps_delta-1)/2.;
+    double bin_mu_low = mu_WIMP_low-(mu_WIMP_high-mu_WIMP_low)/(fNSteps_mu-1)/2.;
+    double bin_mu_high = mu_WIMP_high+(mu_WIMP_high-mu_WIMP_low)/(fNSteps_mu-1)/2.;
     
-    RunTree->Branch("m_WIMP",&m_WIMP);
-    RunTree->Branch("nSteps_delta",&fNSteps_delta);
-    RunTree->Branch("nSteps_mu",&fNSteps_mu);
-    RunTree->Branch("delta_low",&delta_low);
-    RunTree->Branch("delta_high",&delta_high);
-    RunTree->Branch("mu_WIMP_low",&mu_WIMP_low);
-    RunTree->Branch("mu_WIMP_high",&mu_WIMP_high);
+    // histogram for efficiency
+    TH2D* hist = new TH2D("hist",";#delta (keV);#mu_{#chi} (#times10^{-3}#mu_{N})",fNSteps_delta,bin_delta_low,bin_delta_high,fNSteps_mu,bin_mu_low,bin_mu_high);
+    double efficiency;
+
     
-    RunTree->Fill();
-    RunTree->Write();
     
     int N=1;
     int Ntot=fNSteps_delta*fNSteps_mu;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
 
             for (int k=0; k<fNSteps_mu; ++k) {
                 
-                std::cout << "#### starting simulation nr. " << N << " of " << Ntot << std::endl;
+                //std::cout << "#### starting simulation nr. " << N << " of " << Ntot << std::endl;
                 N++;
 
                 // initialize parameters
@@ -153,23 +153,9 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 
-                // make TTree
-                TString tree_name;
-                tree_name = TString::Format("%1.f_%1.f_%1.1f",fm_WIMP*2.998e8*2.998e8/1.e9,fdelta/1.e3, fmu_WIMP/1.e-3);
-
-                TTree* dataTree = new TTree(tree_name,tree_name);
-                
                 TVector3 x_WIMP0, v_WIMP0, x_WIMP1, v_WIMP1;
                 
                 double dt, E_R;
-                
-                dataTree->Branch("x_WIMP0", &x_WIMP0);
-                dataTree->Branch("v_WIMP0", &v_WIMP0);
-                dataTree->Branch("x_WIMP1", &x_WIMP1);
-                dataTree->Branch("v_WIMP1", &v_WIMP1);
-                dataTree->Branch("E_R", &E_R);
-                dataTree->Branch("tau", &dt);
-
                 
                 double cosTheta;
                 TVector3 v_WIMPin(1,1,1);
@@ -199,17 +185,30 @@ int main(int argc, char *argv[]) {
                 samplePDF->SetNpy(np);
                 samplePDF->SetNpz(np);
                 
+                efficiency = 0.;
+                
+                int N_all = 0;
+                int N_cuts = 0;
+                
                 // loop over all particles
                 for (int i=0; i<fNParticles; ++i) {
                     
-                    if (i%(fNParticles/100)==0) {
-                        cout << "\r" << "progress " << i*100./fNParticles << "%" << std::flush;
-                    }
+                    //if (i%(fNParticles/100)==0) {
+                      //  cout << "\r" << "progress " << i*100./fNParticles << "%" << std::flush;
+                    //}
                     
                     // start position of WIMP (position of scattering)
                     x_WIMP0 = GetUniPos();
                     
                     //cout << "start position: " << x_WIMP0.X() << ", " << x_WIMP0.Y() << ", " << x_WIMP0.Z() << endl;
+                    
+                    // check if inside FV
+                    double z0 = x_WIMP0.Z();
+                    double r0 = sqrt(x_WIMP0.X()*x_WIMP0.X()+x_WIMP0.Y()*x_WIMP0.Y());
+                    
+                    if (((pow(TMath::Abs((z0+0.003)/0.146),4)+pow(TMath::Abs(r0*r0/0.02),4))<1)) {
+                        N_all++;
+                    }
                     
                     
                     // velocity of WIMP before scattering
@@ -236,32 +235,55 @@ int main(int argc, char *argv[]) {
                     
                     //cout << "end position: " << x_WIMP1.X() << ", " << x_WIMP1.Y() << ", " << x_WIMP1.Z() << endl;
                     
+                    // check if satisfies selection cuts
+                    double z1 = x_WIMP1.Z();
+                    double r1 = sqrt(x_WIMP1.X()*x_WIMP1.X()+x_WIMP1.Y()*x_WIMP1.Y());
+                    double S1_2 = dt;
+                    double S2_1 = (0.153-z0)/1.73e3;
+                    double S2_2 = dt+(0.153-z1)/1.73e3;
                     
-                    dataTree->Fill();
+                    if (((pow(TMath::Abs((z0+0.003)/0.146),4)+pow(TMath::Abs(r0*r0/0.02),4))<1) && ((pow(TMath::Abs((z1+0.003)/0.146),4)+pow(TMath::Abs(r1*r1/0.02),4))<1) && S1_2<S2_1 && S1_2<S2_2 && S1_2>=50.e-9 && TMath::Abs(S2_2-S2_1)>=3.5e-6) {
+                        N_cuts++;
+                    }
                     
                 }
                 
-                cout << "\n" << endl;
+                // fill histogram
+                int ibin = hist->FindBin(fdelta/1.e3,fmu_WIMP/1.e-3);
+                if (N_all>0) {
+                    efficiency = (double)N_cuts/N_all;
+                }
                 
-                file->cd();
-                dataTree->Write();
+                hist->SetBinContent(ibin,efficiency);
                 
-                // clean up
-                delete dataTree;
-                //delete velocityPDF;
-                //delete cross_section;
-                //delete FormFactor2;
+                //std::cout << "N_all: " << N_all << std::endl;
+                //std::cout << "N_cuts: " << N_cuts << std::endl;
+                
+                //std::cout << "\n" << "efficiency: " << efficiency << std::endl;
+                
+                cout << "\r" << "progress " << N*100./Ntot << "%" << std::flush;
+
+                
+                //cout << "\n" << endl;
+                
                 delete samplePDF;
                 
             }
         }
     //}
     
+    hist->Write();
+    
     file->Close();
    
     t2=clock();
     
-    cout << "run time: " << (t2-t1) / CLOCKS_PER_SEC << " sec." << endl;
+    std::cout << "\n" << std::endl;
+    
+    std::cout << "run time: " << (t2-t1) / CLOCKS_PER_SEC << " sec." << std::endl;
+    
+    std::cout << "results saved to " << "efficiency_"+results_name+".root" << std::endl;
+
     
     return 0;
     
@@ -561,7 +583,7 @@ int InitParameters(int step_delta, int step_mu) {
     fv_min = sqrt(2.*fdelta/fmu);
     
     if  (fv_esc+fv_sun<fv_min) {
-        cout << "ERROR: Inelastic scattering is kinematically not possible! Choose a different combination of m_WIMP and delta!" << endl;
+        cout << "WARNING: Inelastic scattering is kinematically not possible for this combination of m_WIMP and delta!" << endl;
         return 1;
     }
     else {
