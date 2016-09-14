@@ -7,10 +7,10 @@
 # mass splitting upper limit (eV)
 200.e3;
 # mass splitting steps
-10
+100
 # WIMP dipole moment lower limit (mu_N)
 1.2e-3;
 # WIMP dipole moment upper limit (mu_N)
 9.3e-3;
 # WIMP dipole moment steps
-10
+100
