@@ -31,38 +31,29 @@ LIBS := `bat-config --libs`
 # Add classes to the end. Backslash indicates continuation
 # on the next line
 CXXSRCS_all      = \
-	efficiency_simulation.cxx plot_efficiency.cxx plot_parameters.cxx
+	efficiency_simulation.cxx
 
 CXXSRCS1      = \
         efficiency_simulation.cxx 
-CXXSRCS2      = \
-	plot_efficiency.cxx
-CXXSRCS3      = \
-	plot_parameters.cxx
+
 # ----------------------------------------------------------------------
 # don't change lines below unless you know what you're doing
 #
 CXXOBJS_all      = $(patsubst %.cxx,%.o,$(CXXSRCS_all))
 
 CXXOBJS1      = $(patsubst %.cxx,%.o,$(CXXSRCS1))
-CXXOBJS2      = $(patsubst %.cxx,%.o,$(CXXSRCS2))
-CXXOBJS3      = $(patsubst %.cxx,%.o,$(CXXSRCS3))
 
 MYPROGS_all     = \
-	efficiency_simulation plot_efficiency plot_parameters
+	efficiency_simulation 
 
 MYPROGS1     = \
         efficiency_simulation
-MYPROGS2     = \
-	plot_efficiency
-MYPROGS3     = \
-	plot_parameters
 
 
 GARBAGE = $(CXXOBJS_all) *~ link.d $(MYPROGS_all)
 
 # targets
-all : efficiency_simulation plot_efficiency plot_parameters
+all : efficiency_simulation
 
 link.d : $(patsubst %.cxx,%.h,$(CXXSRCS_all))
 	$(CXX) -MM $(CXXFLAGS) $(CXXSRCS_all) > link.d;
@@ -78,11 +69,6 @@ clean :
 efficiency_simulation : $(CXXOBJS1)
 	$(CXX) $(LDFLAGS) $(CXXOBJS1) $(LIBS) -o $@
 
-plot_efficiency : $(CXXOBJS2)
-	$(CXX) $(LDFLAGS) $(CXXOBJS2) $(LIBS) -o $@
-
-plot_parameters : $(CXXOBJS3)
-	$(CXX) $(LDFLAGS) $(CXXOBJS3) $(LIBS) -o $@
 
 
 print :
